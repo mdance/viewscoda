@@ -1,0 +1,30 @@
+<?php
+// $Id$
+
+/**
+ * Implementation of hook_install().
+ */
+function views_coda_install() {
+  drupal_set_message(t('The views coda module has been installed.'));
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function views_coda_uninstall() {
+  drupal_set_message(t('The views coda module has been uninstalled.'));
+}
+
+/**
+ * Implementation of hook_enable().
+ */
+function views_coda_enable() {
+  drupal_set_message(t('The views coda module has been enabled.'));
+}
+
+/**
+ * Implementation of hook_disable().
+ */
+function views_coda_disable() {
+  drupal_set_message(t('The views coda module has been disabled.'));
+}

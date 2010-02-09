@@ -1,0 +1,6 @@
+; $Id$
+name = Views Coda
+description = Provides a views coda slider style.
+dependencies[] = views
+package = Views
+core = 6.x
