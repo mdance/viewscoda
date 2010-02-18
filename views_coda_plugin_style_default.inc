@@ -255,11 +255,10 @@ class views_coda_plugin_style_default extends views_plugin_style {
       '#title' => t('Panel Title Type'),
       '#options' => array(
         'count' => t('Count'),
-        'grouping' => t('Grouping'),
         'field' => t('Field'),
         'selector' => t('Selector'),
       ),
-      '#description' => t('Specifies how to determine the dynamic tabs caption.  If set to Count, the record count will be used.  If set to Grouping, the grouping title will be used.  If set to Field Index, the value '),
+      '#description' => t('Specifies how to determine the dynamic tabs caption.  If set to Count, the record count will be used.  If set to Field, the row style must be set to Fields, this allows you to select which field to be used from the Panel Title Field dropdown below.  If set to Selector, you can manually specify a jQuery Selector to retrieve for the panel title field.'),
       '#default_value' => $this->options['panelTitle'],
     );
 
@@ -289,6 +288,12 @@ class views_coda_plugin_style_default extends views_plugin_style {
         '#title' => t('Panel Title Field'),
         '#options' => $fieldoptions,
         '#description' => t('Specifies which field from fields should be used for the dynamic tabs.  Dynamic Tabs must be set to Yes.'),
+        '#default_value' => $this->options['panelTitleField'],
+      );
+    }
+    else {
+      $form['panelTitleField'] = array(
+        '#type' => 'value',
         '#default_value' => $this->options['panelTitleField'],
       );
     }
@@ -340,5 +345,144 @@ class views_coda_plugin_style_default extends views_plugin_style {
 
         break;
     }
+  }
+
+  /**
+   * Render the display in this style.
+   */
+  function render() {
+    if ($this->uses_row_plugin() && empty($this->row_plugin)) {
+      vpr('views_plugin_style_default: Missing row plugin');
+      return;
+    }
+
+    // Group the rows according to the grouping field, if specified.
+    $sets = $this->render_grouping($this->view->result, $this->options['grouping']);
+
+    // Render each group separately and concatenate.  Plugins may override this
+    // method if they wish some other way of handling grouping.
+    $output = '';
+    $this->view->row_index = 0;
+
+    $base = drupal_get_path('module', 'views_coda');
+
+    drupal_add_js($base . '/js/jquery.easing.1.3.js', 'module');
+    drupal_add_js($base . '/js/jquery.coda-slider-2.0.js', 'module');
+
+    drupal_add_css($base . '/css/views_coda.css', 'module');
+    drupal_add_css($base . '/css/views_coda_module.css', 'module');
+
+    $map = array(
+      'autoHeight' => 'boolean',
+      'autoHeightEaseDuration' => 'int',
+      'autoSlide' => 'boolean',
+      'autoSlideInterval' => 'int',
+      'autoSlideStopWhenClicked' => 'boolean',
+      'dynamicArrows' => 'boolean',
+      'dynamicArrowLeftText' => 'string',
+      'dynamicArrowRightText' => 'string',
+      'dynamicTabs' => 'boolean',
+      'dynamicTabsAlign' => 'string',
+      'dynamicTabsPosition' => 'string',
+      'firstPanelToLoad' => 'int',
+      'slideEaseDuration' => 'int',
+      'autoHeightEaseFunction' => 'string',
+      'crossLinking' => 'boolean',
+      'externalTriggerSelector' => 'string',
+      'panelTitleSelector' => 'string',
+      'slideEaseFunction' => 'string',
+    );
+
+    $jsoptions = $this->options;
+
+    if ( $jsoptions['panelTitle'] == 'count' ) {
+      $jsoptions['panelTitleSelector'] = '.views-coda-paneltitle';
+    }
+    else if ( $jsoptions['panelTitle'] == 'grouping' ) {
+
+    }
+    else if ( $jsoptions['panelTitle'] == 'field' ) {
+      $jsoptions['panelTitleSelector'] = '.views-coda-paneltitle';
+    }
+
+    if ( is_array($jsoptions) ) {
+      foreach ( $jsoptions as $key => $value ) {
+        if ( !isset($map[$key]) ) {
+          unset($jsoptions[$key]);
+        }
+        else {
+          switch ( $map[$key] ) {
+            case 'boolean' :
+              $jsoptions[$key] = (boolean)$value;
+              break;
+            case 'int' :
+              $jsoptions[$key] = (int)$value;
+              break;
+          }
+        }
+      }
+    }
+
+    $json = drupal_to_js($jsoptions);
+
+    $setcount = 0;
+
+    foreach ( $sets as $title => $records ) {
+      $codaid = "coda-slider-" . $this->display->vid . "-" . str_replace('_', '-', $this->display->id) . '-' . $setcount;
+
+      $this->view->views_coda['codaid'] = $codaid;
+
+      $js = <<<EOF
+$().ready(function() {
+  $('#$codaid').codaSlider(
+    $json
+  );
+});
+EOF;
+
+      drupal_add_js($js, 'inline');
+
+      if ( $this->uses_row_plugin() ) {
+        $rows = array();
+
+        $recordcount = 1;
+
+        foreach ( $records as $label => $row ) {
+          $paneltitle = '';
+
+          if ( $this->options['panelTitle'] == 'count' ) {
+            $paneltitle = $recordcount;
+          }
+          else if ( $this->options['panelTitle'] == 'field' ) {
+            $fieldindex = (int)$this->options['panelTitleField'];
+
+            $fieldnames = array_keys($this->view->field);
+
+            $fieldname = $fieldnames[$fieldindex];
+            $field = $this->view->field[$fieldname]->field_alias;
+            $paneltitle = $row->$field;
+          }
+
+          $rowoutput = $this->row_plugin->render($row);
+
+          $rowoutput .= <<<EOF
+<div class="views-coda-paneltitle">$paneltitle</div>
+EOF;
+
+          $rows[] = $rowoutput;
+
+          $this->view->row_index++;
+          $recordcount++;
+        }
+      }
+      else {
+        $rows = $records;
+      }
+
+      $output .= theme($this->theme_functions(), $this->view, $this->options, $rows, $title);
+      $setcount++;
+    }
+    unset($this->view->row_index);
+    return $output;
   }
 }

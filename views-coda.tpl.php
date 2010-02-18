@@ -14,27 +14,27 @@
  *
  * @ingroup views_templates
  */
-$viewtest = $view;
-$titletest = $title;
+$codaid = $view->views_coda['codaid'];
 
-$output = <<<EOF
-<div class="coda-slider-wrapper">
-	<div class="coda-slider preload" id="coda-slider-$id">
+if ( $title != '' ) {
+  $output = <<<EOF
+    <h3 class="views-coda-title">$title</h3>
 EOF;
+}
 
-$count = 1;
+$output .= <<<EOF
+<div class="coda-slider-wrapper">
+	<div class="coda-slider preload" id="$codaid">
+EOF;
 
 foreach ( $rows as $row ) {
   $output .= <<<EOF
 		<div class="panel">
 			<div class="panel-wrapper">
 			  $row
-			  <div class="views-coda-count" style="display: none;">$count</div>
 			</div>
 		</div>
 EOF;
-
-  $count++;
 }
 
 $output .= <<<EOF
