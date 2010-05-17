@@ -460,7 +460,10 @@ EOF;
 
             $fieldname = $fieldnames[$fieldindex];
             $field = $this->view->field[$fieldname]->field_alias;
-            $paneltitle = $row->$field;
+
+            if ( isset($row->field) ) {
+              $paneltitle = $row->$field;
+            }
           }
 
           $rowoutput = $this->row_plugin->render($row);
